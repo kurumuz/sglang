@@ -23,6 +23,8 @@ import fastapi
 import zmq
 
 from sglang.srt.managers.io_struct import (
+    CheckCacheReqInput,
+    CheckCacheReqOutput,
     ClearHiCacheReqInput,
     ClearHiCacheReqOutput,
     CloseSessionReqInput,
@@ -184,6 +186,9 @@ class TokenizerCommunicatorMixin:
         self.flush_cache_communicator = _Communicator(
             self.send_to_scheduler, server_args.dp_size
         )
+        self.check_cache_communicator = _Communicator(
+            self.send_to_scheduler, server_args.dp_size
+        )
         self.clear_hicache_storage_communicator = _Communicator(
             self.send_to_scheduler, server_args.dp_size
         )
@@ -260,6 +265,10 @@ class TokenizerCommunicatorMixin:
                     self.flush_cache_communicator.handle_recv,
                 ),
                 (
+                    CheckCacheReqOutput,
+                    self.check_cache_communicator.handle_recv,
+                ),
+                (
                     ProfileReqOutput,
                     self.profile_communicator.handle_recv,
                 ),
@@ -288,6 +297,10 @@ class TokenizerCommunicatorMixin:
 
     async def flush_cache(self: TokenizerManager) -> FlushCacheReqOutput:
         return (await self.flush_cache_communicator(FlushCacheReqInput()))[0]
+
+    async def check_cache(self: TokenizerManager, input_ids: List[int], extra_key: Optional[str] = None) -> CheckCacheReqOutput:
+        """Check if a cache entry exists for the given token sequence."""
+        return (await self.check_cache_communicator(CheckCacheReqInput(input_ids=input_ids, extra_key=extra_key)))[0]
 
     async def clear_hicache_storage(self: TokenizerManager) -> ClearHiCacheReqOutput:
         """Clear the hierarchical cache storage."""

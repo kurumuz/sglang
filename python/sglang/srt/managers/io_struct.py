@@ -977,6 +977,18 @@ class FlushCacheReqOutput:
 
 
 @dataclass
+class CheckCacheReqInput:
+    input_ids: List[int]
+    extra_key: Optional[str] = None
+
+
+@dataclass
+class CheckCacheReqOutput:
+    cached_tokens: int
+    total_tokens: int
+
+
+@dataclass
 class UpdateWeightFromDiskReqInput:
     # The model path with the new weights
     model_path: str

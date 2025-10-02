@@ -72,6 +72,8 @@ from sglang.srt.managers.io_struct import (
     AbortReq,
     BatchTokenizedEmbeddingReqInput,
     BatchTokenizedGenerateReqInput,
+    CheckCacheReqInput,
+    CheckCacheReqOutput,
     ClearHiCacheReqInput,
     ClearHiCacheReqOutput,
     CloseSessionReqInput,
@@ -581,6 +583,7 @@ class Scheduler(
                 (BatchTokenizedGenerateReqInput, self.handle_batch_generate_request),
                 (BatchTokenizedEmbeddingReqInput, self.handle_batch_embedding_request),
                 (FlushCacheReqInput, self.flush_cache_wrapped),
+                (CheckCacheReqInput, self.check_cache_wrapped),
                 (ClearHiCacheReqInput, self.clear_hicache_storage_wrapped),
                 (AbortReq, self.abort_request),
                 (OpenSessionReqInput, self.open_session),
@@ -2373,6 +2376,19 @@ class Scheduler(
     def flush_cache_wrapped(self, recv_req: FlushCacheReqInput):
         success = self.flush_cache()
         return FlushCacheReqOutput(success=success)
+
+    def check_cache_wrapped(self, recv_req: CheckCacheReqInput):
+        from sglang.srt.mem_cache.radix_cache import RadixKey
+
+        key = RadixKey(token_ids=recv_req.input_ids, extra_key=recv_req.extra_key)
+        match_result = self.tree_cache.match_prefix(key)
+        cached_tokens = len(match_result.device_indices)
+        total_tokens = len(recv_req.input_ids)
+
+        return CheckCacheReqOutput(
+            cached_tokens=cached_tokens,
+            total_tokens=total_tokens
+        )
 
     def clear_hicache_storage_wrapped(self, recv_req: ClearHiCacheReqInput):
         if self.enable_hierarchical_cache:

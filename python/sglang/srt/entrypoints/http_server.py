@@ -68,6 +68,7 @@ from sglang.srt.entrypoints.openai.serving_score import OpenAIServingScore
 from sglang.srt.function_call.function_call_parser import FunctionCallParser
 from sglang.srt.managers.io_struct import (
     AbortReq,
+    CheckCacheReqInput,
     CloseSessionReqInput,
     ConfigureLoggingReq,
     DestroyWeightsUpdateGroupReqInput,
@@ -569,6 +570,28 @@ async def flush_cache():
         "(When there are running or waiting requests, the operation will not be performed.)\n",
         status_code=200 if ret.success else HTTPStatus.BAD_REQUEST,
     )
+
+
+@app.api_route("/check_cache", methods=["POST", "PUT"])
+async def check_cache(obj: CheckCacheReqInput, request: Request):
+    """Check if a cache entry exists for the given token sequence."""
+    try:
+        ret = await _global_state.tokenizer_manager.check_cache(
+            input_ids=obj.input_ids,
+            extra_key=obj.extra_key
+        )
+
+        return ORJSONResponse(
+            {
+                "cached_tokens": ret.cached_tokens,
+                "total_tokens": ret.total_tokens,
+                "cache_hit_rate": ret.cached_tokens / ret.total_tokens if ret.total_tokens > 0 else 0.0,
+            },
+            status_code=200,
+        )
+    except Exception as e:
+        logger.error(f"[check_cache] Error: {e}")
+        return _create_error_response(e)
 
 
 @app.api_route("/clear_hicache_storage_backend", methods=["GET", "POST"])
